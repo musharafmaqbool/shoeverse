@@ -1,6 +1,6 @@
 # Thrifted Kicks - Frontend
 
-![Project Logo or Screenshot (Optional)](/logoooo.jpg)
+
 
 A modern and responsive e-commerce frontend for a thrifted shoes store. This project is currently focused on the user interface and adding items to a local cart using React and styled-components. A separate backend is planned for handling actual orders and data persistence.
 

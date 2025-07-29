@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useCart } from '../contexts/CartContext';
+import { Link, useNavigate } from 'react-router-dom';
+import PhoneVerificationModal from './PhoneVerificationModal';
+import toast from 'react-hot-toast';
 
 const CardContainer = styled.div`
   background-color: #333; /* Medium grey background */
@@ -23,10 +26,16 @@ const CardContainer = styled.div`
 
 const CardImage = styled.img`
   width: 100%;
-  height: 180px; /* Fixed height for consistency */
-  object-fit: cover; /* Cover the area without distorting aspect ratio */
+  height: 180px;
+  object-fit: cover;
   border-radius: 8px;
   margin-bottom: 15px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+
+  &:hover {
+    transform: scale(1.05);
+  }
 `;
 
 const ShoeName = styled.h3`
@@ -77,28 +86,58 @@ const CardButton = styled.button`
 
 const ShoeCard = ({ shoe }) => {
   const { addToCart } = useCart();
+  const navigate = useNavigate();
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+
+  const handleAddToCart = () => {
+    setPendingAction('addToCart');
+    setShowPhoneModal(true);
+  };
 
   const handleBuyNow = () => {
-    // For now, Buy Now will also just add to cart.
-    // A full implementation would involve navigation to cart/checkout.
-    addToCart(shoe);
-    // Optionally navigate to cart page:
-    // navigate('/cart');
+    setPendingAction('buyNow');
+    setShowPhoneModal(true);
+  };
+
+  const handlePhoneVerificationSuccess = (phoneNumber) => {
+    if (pendingAction === 'addToCart') {
+      addToCart(shoe);
+      toast.success(`${shoe.name} added to cart!`);
+    } else if (pendingAction === 'buyNow') {
+      addToCart(shoe);
+      navigate('/checkout');
+    }
+    setPendingAction(null);
   };
 
   return (
-    <CardContainer>
-      <CardImage src={shoe.image} alt={shoe.name} />
-      <ShoeName>{shoe.name}</ShoeName>
-      <PriceInfo>
-        <OriginalPrice>{shoe.originalPrice}</OriginalPrice>
-        <DiscountedPrice>{shoe.discountedPrice}</DiscountedPrice>
-      </PriceInfo>
-      <ButtonContainer>
-        <CardButton onClick={() => addToCart(shoe)}>Add to Cart</CardButton>
-        <CardButton onClick={handleBuyNow}>Buy Now</CardButton>
-      </ButtonContainer>
-    </CardContainer>
+    <>
+      <CardContainer>
+        <Link to={`/product/${shoe.id}`}>
+          <CardImage src={shoe.image} alt={shoe.name} />
+        </Link>
+        <ShoeName>{shoe.name}</ShoeName>
+        <PriceInfo>
+          <OriginalPrice>₹{shoe.originalPrice.toLocaleString()}</OriginalPrice>
+          <DiscountedPrice>₹{shoe.discountedPrice.toLocaleString()}</DiscountedPrice>
+        </PriceInfo>
+        <ButtonContainer>
+          <CardButton onClick={handleAddToCart}>Add to Cart</CardButton>
+          <CardButton onClick={handleBuyNow}>Buy Now</CardButton>
+        </ButtonContainer>
+      </CardContainer>
+
+      <PhoneVerificationModal
+        isOpen={showPhoneModal}
+        onClose={() => {
+          setShowPhoneModal(false);
+          setPendingAction(null);
+        }}
+        onSuccess={handlePhoneVerificationSuccess}
+        actionType={pendingAction}
+      />
+    </>
   );
 };
 

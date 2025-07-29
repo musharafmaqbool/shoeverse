@@ -11,32 +11,45 @@ export const CartProvider = ({ children }) => {
 
   const addToCart = (shoe) => {
     setCartItems((prevItems) => {
-      const existingItem = prevItems.find(item => item.id === shoe.id);
+      const existingItem = prevItems.find(item => 
+        item.id === shoe.id && item.selectedSize === shoe.selectedSize
+      );
+      
       if (existingItem) {
-        // If item already exists, increase quantity (assuming shoes have a unique ID)
-        // Note: Our current shoe data doesn't have IDs, we should add them or use name as key.
-        // For now, let's assume a simple add - a more robust solution would handle quantity.
-        return [...prevItems, { ...shoe, quantity: 1 }]; // Simple add for now
+        // If item already exists with same size, increase quantity
+        return prevItems.map(item => 
+          item.id === shoe.id && item.selectedSize === shoe.selectedSize
+            ? { ...item, quantity: item.quantity + (shoe.quantity || 1) }
+            : item
+        );
       } else {
-        // If item doesn't exist, add it with quantity 1
-         return [...prevItems, { ...shoe, quantity: 1 }]; // Simple add for now
+        // If item doesn't exist, add it with quantity
+        return [...prevItems, { ...shoe, quantity: shoe.quantity || 1 }];
       }
     });
-     // Temporary alert for feedback - remove later
-     alert(`${shoe.name} added to cart!`);
   };
 
-   const removeFromCart = (shoeId) => {
-    setCartItems((prevItems) => prevItems.filter(item => item.id !== shoeId));
-     // Temporary alert for feedback - remove later
-     alert('Item removed from cart!');
+  const updateQuantity = (itemId, selectedSize, newQuantity) => {
+    setCartItems((prevItems) => 
+      prevItems.map(item => 
+        item.id === itemId && item.selectedSize === selectedSize
+          ? { ...item, quantity: newQuantity }
+          : item
+      )
+    );
+  };
+
+   const removeFromCart = (itemId, selectedSize) => {
+    setCartItems((prevItems) => 
+      prevItems.filter(item => !(item.id === itemId && item.selectedSize === selectedSize))
+    );
   };
 
   // We can add updateQuantity later if needed
   // const updateQuantity = (shoeId, quantity) => { ... };
 
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart }}>
+    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity }}>
       {children}
     </CartContext.Provider>
   );

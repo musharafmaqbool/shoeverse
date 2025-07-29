@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { FiSearch } from 'react-icons/fi'; // Import search icon
-import { BsBag } from 'react-icons/bs'; // Import bag icon
-import { AiOutlineMenu } from 'react-icons/ai'; // Import menu icon
-import { Link } from 'react-router-dom'; // Import Link
+import { FiSearch } from 'react-icons/fi';
+import { BsBag } from 'react-icons/bs';
+import { AiOutlineMenu } from 'react-icons/ai';
+import { Link, useNavigate } from 'react-router-dom';
 import { IoMenu, IoClose } from 'react-icons/io5';
-import { FaShoppingCart, FaUser } from 'react-icons/fa'; // Import FaUser icon
+import { FaShoppingCart, FaUser, FaSignOutAlt, FaUserCog, FaBox } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useCart } from '../contexts/CartContext.jsx'; // Corrected import path with .jsx extension
+import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
+import UserProfileModal from './UserProfileModal';
+import toast from 'react-hot-toast';
 
 const HeaderContainer = styled.header`
   display: flex;
@@ -251,31 +254,122 @@ const Button = styled.button`
   }
 `;
 
+const CartBadge = styled.span`
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: #ff6b6b;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+`;
+
+const UserDropdown = styled.div`
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 10px 0;
+  min-width: 200px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+`;
+
+const UserMenuItem = styled(Link)`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  color: #ffffff;
+  text-decoration: none;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #333;
+  }
+`;
+
+const UserMenuButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #333;
+  }
+`;
+
 const Header = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // Renamed state variable
-  const [isSearchOpen, setIsSearchOpen] = useState(false); // State for search input
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false); // State for user login interface
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showUserProfile, setShowUserProfile] = useState(false);
+  
+  const { cartItems } = useCart();
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
-    setIsSearchOpen(false); // Close search when opening menu
-    setIsUserMenuOpen(false); // Close user menu when opening menu
+    setIsSearchOpen(false);
+    setIsUserMenuOpen(false);
   };
 
   const toggleSearch = () => {
     setIsSearchOpen(!isSearchOpen);
-    setIsMenuOpen(false); // Close menu when opening search
-    setIsUserMenuOpen(false); // Close user menu when opening search
+    setIsMenuOpen(false);
+    setIsUserMenuOpen(false);
   };
 
   const toggleUserMenu = () => {
-    setIsUserMenuOpen(!isUserMenuOpen);
-    setIsMenuOpen(false); // Close menu when opening user menu
-    setIsSearchOpen(false); // Close search when opening user menu
+    if (currentUser) {
+      setShowUserProfile(true);
+    } else {
+      setIsUserMenuOpen(!isUserMenuOpen);
+      setIsMenuOpen(false);
+      setIsSearchOpen(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Logged out successfully');
+      navigate('/');
+    } catch (error) {
+      toast.error('Failed to log out');
+    }
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+      setIsSearchOpen(false);
+    }
   };
 
   const menuItems = [
     { name: 'HOME', link: '/' },
+    { name: 'PRODUCTS', link: '/products' },
     { name: 'EXPLORE', link: '/explore' },
     { name: 'ABOUT', link: '/about' },
     { name: 'CONTACT', link: '/contact' },
@@ -300,11 +394,18 @@ const Header = () => {
         </HeaderLeft>
 
         <IconsContainer>
-          <Icon onClick={toggleSearch}><FiSearch /></Icon> {/* Add onClick handler */}
-          <Link to="/cart"><Icon><BsBag /></Icon></Link>
+          <Icon onClick={toggleSearch}><FiSearch /></Icon>
+          <Link to="/cart">
+            <Icon>
+              <BsBag />
+              {cartItems.length > 0 && (
+                <CartBadge>{cartItems.length}</CartBadge>
+              )}
+            </Icon>
+          </Link>
           <Icon onClick={toggleUserMenu}>
             <FaUser />
-          </Icon> {/* Added onClick handler */}
+          </Icon>
           <MenuIconContainer onClick={toggleMenu}>
              <AiOutlineMenu />
            </MenuIconContainer>
@@ -340,10 +441,42 @@ const Header = () => {
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <SearchInput type="text" placeholder="Search for shoes..." />
+            <form onSubmit={handleSearch}>
+              <SearchInput 
+                type="text" 
+                placeholder="Search for shoes..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </form>
           </SearchInputContainer>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {isUserMenuOpen && (
+          <UserDropdown
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <UserMenuItem to="/login">
+              <FaUser />
+              Login
+            </UserMenuItem>
+            <UserMenuItem to="/signup">
+              <FaUser />
+              Sign Up
+            </UserMenuItem>
+          </UserDropdown>
+        )}
+      </AnimatePresence>
+
+      <UserProfileModal
+        isOpen={showUserProfile}
+        onClose={() => setShowUserProfile(false)}
+      />
     </>
   );
 };

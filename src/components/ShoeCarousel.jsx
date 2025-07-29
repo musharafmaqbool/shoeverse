@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import Slider from 'react-slick';
 import "slick-carousel/slick/slick.css";
@@ -6,6 +6,8 @@ import "slick-carousel/slick/slick-theme.css";
 import { motion } from 'framer-motion';
 import { useCart } from '../contexts/CartContext';
 import { IoCartSharp } from 'react-icons/io5';
+import PhoneVerificationModal from './PhoneVerificationModal';
+import toast from 'react-hot-toast';
 
 const CarouselContainer = styled.div`
   width: 100%;
@@ -168,6 +170,21 @@ const shoes = [
 
 const ShoeCarousel = () => {
   const { addToCart } = useCart();
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [selectedShoe, setSelectedShoe] = useState(null);
+
+  const handleAddToCart = (shoe) => {
+    setSelectedShoe(shoe);
+    setShowPhoneModal(true);
+  };
+
+  const handlePhoneVerificationSuccess = (phoneNumber) => {
+    if (selectedShoe) {
+      addToCart(selectedShoe);
+      toast.success(`${selectedShoe.name} added to cart!`);
+    }
+    setSelectedShoe(null);
+  };
 
   const settings = {
     dots: true,
@@ -223,7 +240,7 @@ const ShoeCarousel = () => {
                   <OriginalPrice>{shoe.originalPrice}</OriginalPrice>
                   <DiscountedPrice>{shoe.discountedPrice}</DiscountedPrice>
                 </PriceInfo>
-                <AddToCartButton onClick={() => addToCart(shoe)}>
+                <AddToCartButton onClick={() => handleAddToCart(shoe)}>
                   <IoCartSharp />
                 </AddToCartButton>
               </TextContainer>
@@ -231,6 +248,16 @@ const ShoeCarousel = () => {
           </div>
         ))}
       </Slider>
+      
+      <PhoneVerificationModal
+        isOpen={showPhoneModal}
+        onClose={() => {
+          setShowPhoneModal(false);
+          setSelectedShoe(null);
+        }}
+        onSuccess={handlePhoneVerificationSuccess}
+        actionType="addToCart"
+      />
     </CarouselContainer>
   );
 };
